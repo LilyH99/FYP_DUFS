@@ -1,65 +1,152 @@
 <template>
   <div class="w-screen h-screen flex flex-col bg-white">
+    <TabBar 
+      :tabs="tabs" 
+      :active-tab="activeTab" 
+      @update-active="activeTab = $event"
+      @rename-tab="renameTab"
+      @delete-tab="deleteTab"
+      @add-tab="addTab"
+    />
 
-    <!-- TOP TAB BAR (unchanged logic, just layout moved up) -->
-    <div class="border-b flex">
-      <div v-for="(tab, index) in tabs" :key="tab.id" class="flex items-center">
-        <button
-          class="px-4 py-2"
-          :class="activeTab === tab.id ? 'font-bold border-b-2' : ''"
-          @click="activeTab = tab.id"
-          @dblclick="startRenaming(tab.id)"
-        >
-          <input
-            v-if="renamingTab === tab.id"
-            v-model="tab.title"
-            @blur="stopRenaming"
-            @keyup.enter="stopRenaming"
-            class="border px-1"
-          />
-          <span v-else>{{ tab.title }}</span>
-        </button>
-        <button class="text-red-500 px-2" @click="deleteTab(index)" v-if="tabs.length > 1">×</button>
-      </div>
-      <button class="ml-4 px-3 py-2 border-l" @click="addTab">+ Add Tab</button>
+    <div class="flex flex-1 p-4 gap-4 overflow-hidden">
+      <SuggestionsPanel 
+        :files="currentTab.suggestions"
+        @file-dropped-to-suggestions="dropToSuggestions"
+        @file-drag-start="startDrag"
+        @file-click="openFile"
+      />
+
+      <FileDropzone @files-added="addFilesToSuggestions" />
+
+      <UnitDraftPanel
+        :sections="unitSections"
+        :unit-files="currentTab.unitFiles"
+        @file-drag-start="startDrag"
+        @file-dropped-to-section="dropToSection"
+        @file-dropped-to-suggestions="dropToSuggestions"
+        @file-click="openFile"
+      />
     </div>
 
-    <!-- 3 COLUMN MAIN CONTENT -->
-    <div class="flex flex-1 p-4 gap-4">
-      
-      <!-- LEFT COLUMN: SUGGESTIONS -->
-      <div class="w-1/3 border rounded-lg shadow-sm p-4">
-        <div class="font-semibold border-b pb-1 mb-2">
-          Suggestions ({{ currentTab.title }})
-        </div>
-      </div>
-
-      <!-- MIDDLE COLUMN: DRAG & DROP -->
-      <div class="w-1/3 border rounded-lg shadow-sm flex items-center justify-center">
-        <span class="text-lg font-medium">Drag & Drop files here</span>
-      </div>
-
-      <!-- RIGHT COLUMN: UNIT FILE DRAFT -->
-      <div class="w-1/3 border rounded-lg shadow-sm p-4">
-        <div class="font-semibold border-b pb-1 mb-2">
-          Unit File Draft ({{ currentTab.title }})
-        </div>
-      </div>
-
-    </div>
+    <FilePreviewModal 
+      v-if="previewFile"
+      :file="previewFile"
+      :preview-url="previewFileUrl"
+      :preview-content="previewContent"
+      @close="closePreview"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+import TabBar from './components/TabBar.vue'
+import SuggestionsPanel from './components/SuggestionsPanel.vue'
+import UnitDraftPanel from './components/UnitDraftPanel.vue'
+import FileDropzone from './components/FileDropzone.vue'
+import FilePreviewModal from './components/FilePreviewModal.vue'
 
-const tabs = ref([{ id: 'tab1', title: 'Tab 1' }])
+// ---------- Tabs ----------
+const tabs = ref([{ 
+  id: 'tab1', title: 'Tab 1', suggestions: [], unitFiles: {} 
+}])
 const activeTab = ref('tab1')
-const renamingTab = ref(null)
 
+// ---------- Unit Sections ----------
+const unitSections = [
+  { id: 'unit1', title: '1.0 Unit Panel Documentation' },
+  { id: 'unit2', title: '2.0 Unit Outline' },
+  { id: 'unit3', title: '3.0 Learning Materials' },
+  { id: 'unit4', title: '4.0 Tutorial Materials' },
+  { id: 'unit5', title: "5.0 Assessments and Marking Schemes" },
+  { id: 'unit6', title: "6.0 Samples of Students' Work" },
+  { id: 'unit7', title: "7.0 Outcome Based Education Report" },
+  { id: 'unit8', title: "8.0 Safety Acknowledgement" },
+  { id: 'unit9', title: "9.0 Final Exam Script" },
+]
+
+// Initialize empty arrays for each section per tab
+tabs.value.forEach(tab => {
+  unitSections.forEach(s => tab.unitFiles[s.id] = [])
+})
+
+// ---------- Current Tab ----------
+const currentTab = computed(() => tabs.value.find(t => t.id === activeTab.value) || tabs.value[0])
+
+// ---------- Drag & Drop ----------
+const dragItem = ref(null)
+const dragFrom = ref(null)
+const dragIndex = ref(null)
+
+const startDrag = (event, file, from, index) => {
+  console.log('App.startDrag', { name: file?.name, from, index })
+  dragItem.value = file
+  dragFrom.value = from
+  dragIndex.value = index
+
+  // if event is present, ensure dataTransfer is set (defensive)
+  try {
+    event?.dataTransfer?.setData('text/plain', file?.name || '')
+    event?.dataTransfer && (event.dataTransfer.effectAllowed = 'move')
+  } catch (e) { /* ignore */ }
+}
+
+const dropToSection = (sectionId) => {
+  console.log('App.dropToSection', { sectionId, dragging: dragItem.value?.name, dragFrom: dragFrom.value, dragIndex: dragIndex.value })
+  if (!dragItem.value) return
+  if (dragFrom.value === 'suggestions') {
+    currentTab.value.suggestions.splice(dragIndex.value, 1)
+  } else {
+    currentTab.value.unitFiles[dragFrom.value].splice(dragIndex.value, 1)
+  }
+  currentTab.value.unitFiles[sectionId].push(dragItem.value)
+  dragItem.value = null
+  dragFrom.value = null
+  dragIndex.value = null
+}
+
+const dropToSuggestions = () => {
+  if (!dragItem.value) return
+  if (dragFrom.value !== 'suggestions') currentTab.value.unitFiles[dragFrom.value].splice(dragIndex.value,1)
+  currentTab.value.suggestions.push(dragItem.value)
+  dragItem.value = null; dragFrom.value = null; dragIndex.value = null
+}
+
+// ---------- File Handling ----------
+const addFilesToSuggestions = (files) => {
+  files.forEach(file=>{
+    if(file.type.startsWith('image/')) file.preview = URL.createObjectURL(file)
+    else file.preview = null
+  })
+  currentTab.value.suggestions.push(...files)
+}
+
+// ---------- File Preview ----------
+const previewFile = ref(null)
+const previewFileUrl = ref('')
+const previewContent = ref('')
+
+const openFile = async (file) => {
+  previewFile.value = file
+  previewContent.value = ''
+  previewFileUrl.value = ''
+  if (file.type === 'application/pdf') previewFileUrl.value = URL.createObjectURL(file)
+  else if (file.type.startsWith('text/')) previewContent.value = await file.text()
+}
+
+const closePreview = () => {
+  previewFile.value = null
+  previewFileUrl.value = ''
+  previewContent.value = ''
+}
+
+// ---------- Tabs ----------
 const addTab = () => {
   const newId = 'tab' + (tabs.value.length + 1)
-  tabs.value.push({ id: newId, title: 'New Tab' })
+  const newTab = { id: newId, title: 'New Tab', suggestions: [], unitFiles: {} }
+  unitSections.forEach(s => newTab.unitFiles[s.id] = [])
+  tabs.value.push(newTab)
   activeTab.value = newId
 }
 
@@ -71,12 +158,8 @@ const deleteTab = (index) => {
   tabs.value.splice(index, 1)
 }
 
-const startRenaming = (id) => {
-  renamingTab.value = id
+const renameTab = (id, title) => {
+  const tab = tabs.value.find(t => t.id === id)
+  if(tab) tab.title = title
 }
-const stopRenaming = () => {
-  renamingTab.value = null
-}
-
-const currentTab = computed(() => tabs.value.find(t => t.id === activeTab.value) || tabs.value[0])
 </script>
