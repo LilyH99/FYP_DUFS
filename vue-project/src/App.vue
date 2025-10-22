@@ -17,7 +17,7 @@
         @generate-output="generateUnitFileOutput"
       />
     </div>
-    
+
     <div class="flex flex-1 p-4 gap-4 overflow-hidden">
       <SuggestionsPanel 
         :files="currentTab.suggestions"
@@ -56,6 +56,7 @@ import UnitDraftPanel from './components/UnitDraftPanel.vue'
 import FileDropzone from './components/FileDropzone.vue'
 import FilePreviewModal from './components/FilePreviewModal.vue'
 import ValidationReport from './components/ValidationReport.vue'
+import { generateUnitFileOutput as generateZip } from './outputGenerator.js'
 
 // ---------- Tabs ----------
 const tabs = ref([{ 
@@ -173,9 +174,19 @@ const renameTab = (id, title) => {
   if(tab) tab.title = title
 }
 
-const generateUnitFileOutput = () => {
-  console.log('Generating unit file output...')
-  alert('Generating unit file output! This will be connected to the backend.')
+const generateUnitFileOutput = async () => {
+  const result = await generateZip(
+    currentTab.value.unitFiles,
+    unitSections,
+    'COS12345',
+    'Course Name'
+  )
+  
+  if (result.success) {
+    alert('✅ ' + result.message + '\nCheck your Downloads folder!')
+  } else {
+    alert('❌ ' + result.message)
+  }
 }
 
 </script>
