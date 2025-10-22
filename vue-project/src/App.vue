@@ -9,6 +9,15 @@
       @add-tab="addTab"
     />
 
+    <!-- Validation Report Section -->
+    <div class="p-4 overflow-auto max-h-96">
+      <ValidationReport 
+        :unit-files="currentTab.unitFiles"
+        :sections="unitSections"
+        @generate-output="generateUnitFileOutput"
+      />
+    </div>
+    
     <div class="flex flex-1 p-4 gap-4 overflow-hidden">
       <SuggestionsPanel 
         :files="currentTab.suggestions"
@@ -46,6 +55,7 @@ import SuggestionsPanel from './components/SuggestionsPanel.vue'
 import UnitDraftPanel from './components/UnitDraftPanel.vue'
 import FileDropzone from './components/FileDropzone.vue'
 import FilePreviewModal from './components/FilePreviewModal.vue'
+import ValidationReport from './components/ValidationReport.vue'
 
 // ---------- Tabs ----------
 const tabs = ref([{ 
@@ -162,4 +172,10 @@ const renameTab = (id, title) => {
   const tab = tabs.value.find(t => t.id === id)
   if(tab) tab.title = title
 }
+
+const generateUnitFileOutput = () => {
+  console.log('Generating unit file output...')
+  alert('Generating unit file output! This will be connected to the backend.')
+}
+
 </script>
