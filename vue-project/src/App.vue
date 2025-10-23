@@ -1,5 +1,5 @@
 <template>
-  <div class="w-screen h-screen flex flex-col bg-white">
+  <div class="w-screen min-h-screen flex flex-col bg-white overflow-y-auto">
     <TabBar 
       :tabs="tabs" 
       :active-tab="activeTab" 
@@ -8,6 +8,11 @@
       @delete-tab="deleteTab"
       @add-tab="addTab"
     />
+
+    <!-- Configuration Panel -->
+    <div class="p-4">
+      <ConfigPanel @config-updated="handleConfigUpdate" />
+    </div>
 
     <!-- Validation Report Section -->
     <div class="p-4 overflow-auto max-h-96">
@@ -18,7 +23,7 @@
       />
     </div>
 
-    <div class="flex flex-1 p-4 gap-4 overflow-hidden">
+    <div class="flex flex-1 p-4 gap-4 overflow-auto">
       <SuggestionsPanel 
         :files="currentTab.suggestions"
         @file-dropped-to-suggestions="dropToSuggestions"
@@ -56,6 +61,7 @@ import UnitDraftPanel from './components/UnitDraftPanel.vue'
 import FileDropzone from './components/FileDropzone.vue'
 import FilePreviewModal from './components/FilePreviewModal.vue'
 import ValidationReport from './components/ValidationReport.vue'
+import ConfigPanel from './components/ConfigPanel.vue'
 import { generateUnitFileOutput as generateZip } from './outputGenerator.js'
 
 // ---------- Tabs ----------
@@ -174,6 +180,16 @@ const renameTab = (id, title) => {
   if(tab) tab.title = title
 }
 
+// ---------- Configuration ----------
+const unitConfig = ref(null)
+
+const handleConfigUpdate = (newConfig) => {
+  unitConfig.value = newConfig
+  console.log('Config updated:', newConfig)
+  alert('✅ Configuration saved! These settings will be used for validation.')
+}
+
+// ---------- Generate Output ----------
 const generateUnitFileOutput = async () => {
   const result = await generateZip(
     currentTab.value.unitFiles,

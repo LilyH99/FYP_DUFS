@@ -1,4 +1,4 @@
-// This utility generates a ZIP file with the proper folder structure
+// Generates a ZIP file with the proper folder structure 
 
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
